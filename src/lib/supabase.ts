@@ -3,9 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 import { Database } from '../types/database.types';
 import { QuizResult, Difficulty } from '../types';
 
-// These environment variables are set when connected through Lovable
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Use the direct Supabase URL and anonymous key instead of environment variables
+const supabaseUrl = "https://rceryroeczzetpbhmnaj.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjZXJ5cm9lY3p6ZXRwYmhtbmFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MTY3NDksImV4cCI6MjA2MDk5Mjc0OX0.qNluc2P0UCUK3a3hhqkzuYui_a_vZtBwf4FZIweY1Q8";
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
