@@ -2,14 +2,16 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { getAllResults } from '@/lib/supabase';
+import { getAllResults, getSampleResultsByDifficulty } from '@/lib/supabase';
 import { QuizResult, Difficulty } from '@/types';
 import ResultCard from '@/components/ResultCard';
+import DifficultyResultsTable from '@/components/DifficultyResultsTable';
 import Header from '@/components/Header';
 import { Card, CardContent } from '@/components/ui/card';
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip } from 'recharts';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const TeacherDashboard = () => {
   const { user } = useAuth();
@@ -17,6 +19,10 @@ const TeacherDashboard = () => {
   const [results, setResults] = useState<QuizResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
+  const [easyResults, setEasyResults] = useState<QuizResult[]>([]);
+  const [mediumResults, setMediumResults] = useState<QuizResult[]>([]);
+  const [hardResults, setHardResults] = useState<QuizResult[]>([]);
+  const [loadingDifficultyResults, setLoadingDifficultyResults] = useState(true);
   
   useEffect(() => {
     const fetchResults = async () => {
@@ -47,8 +53,50 @@ const TeacherDashboard = () => {
         setLoading(false);
       }
     };
+
+    const fetchSampleResults = async () => {
+      setLoadingDifficultyResults(true);
+      try {
+        // Fetch sample results for each difficulty
+        const easyPromise = getSampleResultsByDifficulty('easy');
+        const mediumPromise = getSampleResultsByDifficulty('medium');
+        const hardPromise = getSampleResultsByDifficulty('hard');
+        
+        const [easyData, mediumData, hardData] = await Promise.all([
+          easyPromise, mediumPromise, hardPromise
+        ]);
+        
+        if (easyData.error) throw easyData.error;
+        if (mediumData.error) throw mediumData.error;
+        if (hardData.error) throw hardData.error;
+        
+        const formatResults = (data: any) => data.data?.map(result => ({
+          id: result.id,
+          studentId: result.student_id,
+          studentName: result.student_name,
+          difficulty: result.difficulty as Difficulty,
+          score: result.score,
+          totalQuestions: result.total_questions,
+          date: result.date,
+        })) || [];
+        
+        setEasyResults(formatResults(easyData));
+        setMediumResults(formatResults(mediumData));
+        setHardResults(formatResults(hardData));
+      } catch (error) {
+        console.error('Error fetching sample results:', error);
+        toast({
+          title: 'Failed to load sample results',
+          description: 'Could not retrieve sample quiz results. Please try again later.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoadingDifficultyResults(false);
+      }
+    };
     
     fetchResults();
+    fetchSampleResults();
   }, [toast]);
 
   const filteredResults = difficultyFilter === 'all' 
@@ -186,47 +234,78 @@ const TeacherDashboard = () => {
           </Card>
         </div>
         
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">Student Results</h2>
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="difficulty" className="mr-2">
-                Filter by:
-              </Label>
-              <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select Difficulty" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Difficulties</SelectItem>
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+        <Tabs defaultValue="by-student" className="mb-8">
+          <TabsList>
+            <TabsTrigger value="by-student">Results by Student</TabsTrigger>
+            <TabsTrigger value="by-difficulty">Results by Difficulty</TabsTrigger>
+          </TabsList>
           
-          {loading ? (
-            <div className="flex justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <TabsContent value="by-student">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">Student Results</h2>
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor="difficulty" className="mr-2">
+                    Filter by:
+                  </Label>
+                  <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Select Difficulty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Difficulties</SelectItem>
+                      <SelectItem value="easy">Easy</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hard">Hard</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {loading ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : filteredResults.length > 0 ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredResults.map((result) => (
+                    <ResultCard key={result.id} result={result} showStudent={true} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center p-8 bg-gray-50 rounded-lg">
+                  <p className="text-muted-foreground">
+                    {difficultyFilter === 'all' 
+                      ? "No quiz results found." 
+                      : `No ${difficultyFilter} quiz results found.`}
+                  </p>
+                </div>
+              )}
             </div>
-          ) : filteredResults.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredResults.map((result) => (
-                <ResultCard key={result.id} result={result} showStudent={true} />
-              ))}
+          </TabsContent>
+          
+          <TabsContent value="by-difficulty">
+            <div className="space-y-8">
+              <DifficultyResultsTable 
+                title="Easy Difficulty Results" 
+                results={easyResults} 
+                isLoading={loadingDifficultyResults} 
+              />
+              
+              <DifficultyResultsTable 
+                title="Medium Difficulty Results" 
+                results={mediumResults} 
+                isLoading={loadingDifficultyResults} 
+              />
+              
+              <DifficultyResultsTable 
+                title="Hard Difficulty Results" 
+                results={hardResults} 
+                isLoading={loadingDifficultyResults} 
+              />
             </div>
-          ) : (
-            <div className="text-center p-8 bg-gray-50 rounded-lg">
-              <p className="text-muted-foreground">
-                {difficultyFilter === 'all' 
-                  ? "No quiz results found." 
-                  : `No ${difficultyFilter} quiz results found.`}
-              </p>
-            </div>
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

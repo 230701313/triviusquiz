@@ -92,3 +92,13 @@ export async function getAllResults() {
   
   return { data, error };
 }
+
+export async function getSampleResultsByDifficulty(difficulty: Difficulty, limit: number = 10) {
+  const { data, error } = await supabase
+    .from('quiz_results')
+    .select('*')
+    .eq('difficulty', difficulty)
+    .limit(limit);
+  
+  return { data, error };
+}
