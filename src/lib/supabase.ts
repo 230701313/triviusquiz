@@ -1,6 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../types/database.types';
+import { QuizResult, Difficulty } from '../types';
 
 // These environment variables are set when connected through Lovable
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
