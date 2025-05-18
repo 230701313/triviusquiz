@@ -67,9 +67,24 @@ const Quiz = () => {
           studentId: user.id,
           studentName: user.name,
           difficulty: difficulty as Difficulty,
-          score: score,
+          score: score + (selectedOption === questions[currentIndex].correctAnswer ? 1 : 0),
           totalQuestions: questions.length,
           date: new Date().toISOString(),
+        }).then(({ error }) => {
+          if (error) {
+            console.error('Error saving quiz result:', error);
+            toast({
+              title: 'Failed to save result',
+              description: 'Your quiz result could not be saved. Please try again.',
+              variant: 'destructive',
+            });
+          } else {
+            toast({
+              title: 'Quiz completed!',
+              description: 'Your results have been saved.',
+              variant: 'default',
+            });
+          }
         });
       }
     }
